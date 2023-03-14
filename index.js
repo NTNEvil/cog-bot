@@ -657,6 +657,18 @@ client.on('message', message => {
             }
         }
 
+        if (message.content.startsWith('!resetmib')) {
+            if (message.member.roles.cache.some(role => role.name === 'ADM')) {
+                monstersInBattle = {
+                    countMob: [],
+                    mobs: []
+                };
+                message.channel.send("Todos os monstros em batalha se retiraram!");
+            } else {
+                message.reply("Você não tem permissão para executar este comando!");
+            }
+        }
+
         // spawn new monster in battle
         // TODO
         if (message.content.startsWith('!spawn')) {
