@@ -657,7 +657,7 @@ client.on('message', message => {
             }
         }
 
-        if (message.content.startsWith('!resetmib')) {
+        if (message.content == '!removemib') {
             if (message.member.roles.cache.some(role => role.name === 'ADM')) {
                 monstersInBattle = {
                     countMob: [],
