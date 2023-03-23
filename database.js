@@ -1,4 +1,5 @@
 const supabase = require('./conn');
+const HealingHpSpell = require('./model/HealingHpSpell');
 
 const races = ['Humano', 'Dragonborn', 'Tiefling', 'Fada', 'Anão', 'Elfo', 'Orc'];
 
@@ -32,6 +33,14 @@ async function getStatus(userId) {
         .select('*')
         .eq('user_id', userId);
     return status[0];
+}
+
+async function updateStatus(status) {
+    await supabase
+        .from('status')
+        .update(status)
+        .eq('id', status.id);
+    return true;
 }
 
 async function getStatusByDiscord(discordId) {
@@ -543,6 +552,73 @@ async function getMonsterByName(name) {
     return monsters[0];
 }
 
+async function getSpells() {
+    let { data: spells } = await supabase
+        .from('spells')
+        .select('*')
+    return spells;
+}
+
+async function getSpellsByUser(userId) {
+    let { data: spells } = await supabase
+        .from('inventory_spell')
+        .select('*')
+        .eq('user_id');
+    return spells;
+}
+
+async function getSpellByName(name) {
+    let { data: spells } = await supabase
+        .from('spells')
+        .select('*')
+        .like('name', name);
+    const spell = spells[0];
+    if (spell == null) throw new Error('Esta habilidade não existe');
+    return spell;
+}
+
+async function getSpellByNameAndUser(name, userId) {
+    const spell = await getSpellByName(name);
+
+    let { data: spells } = await supabase
+        .from('inventory_spell')
+        .select('*')
+        .eq('spell_id', spell.id)
+        .eq('user_id', userId);
+    const userSpell = spells[0];
+    if (userSpell == null) throw new Error('O jogador não tem nenhuma habilidade com esse nome!');
+    return spell;
+}
+
+async function spell(name, user, target) {
+    const status = await getProfileByDiscord(user);
+
+    const spell = await getSpellByNameAndUser(name, status.user_id);
+    let objectSpell = {};
+
+    const statusUser = await getStatusByDiscord(user);
+    let statusTarget = await getStatusByDiscord(target);
+    if (statusTarget.id == statusUser.id) {
+        statusTarget = statusUser;
+    }
+
+    switch (spell.type) {
+        case 'healingHp':
+            objectSpell = new HealingHpSpell();
+            objectSpell.copyFrom(spell);
+            break;
+
+        default:
+            throw new Error(`Um erro desconhecido ocorreu!`);
+            break;
+    }
+
+    const result = objectSpell.use(statusUser, statusTarget);
+    await updateStatus(statusUser);
+    await updateStatus(statusTarget);
+    return result;
+}
+
 module.exports = {
     getProfiles,
     getProfileByDiscord,
@@ -564,5 +640,7 @@ module.exports = {
     reset,
     testAtt,
     createMonster,
-    getMonsterByName
+    getMonsterByName,
+    getSpells,
+    spell
 }

@@ -3,13 +3,18 @@ const Discord = require('discord.js');
 const db = require('./database');
 const parse = require('./utils/parsers');
 const cron = require('node-cron');
+const Spell = require('./model/Spell');
 
 const client = new Discord.Client();
 
 const token = process.env.DISCORD_TOKEN;
 const prefix = "!";
 
-const job = cron.schedule('0 0 * * *', db.resetHpAndMp);
+const job = cron.schedule('0 0 * * *', function () {
+    db.resetHpAndMp;
+    const chatId = '1077769275072331846';
+    client.channels.cache.get(chatId).send('O hp e mp de todos os jogadores foi resetado!');
+});
 job.start();
 
 // COMBAT
@@ -670,12 +675,66 @@ client.on('message', message => {
         }
 
         // spawn new monster in battle
-        // TODO
         if (message.content.startsWith('!spawn')) {
             if (message.member.roles.cache.some(role => role.name === 'ADM')) {
                 messageList = message.content.split(' ');
                 const name = messageList[1];
                 spawnMob(name, message);
+            } else {
+                message.reply("Você não tem permissão para executar este comando!");
+            }
+        }
+
+        // spells
+        if (message.content == '!infospells') {
+            if (message.member.roles.cache.some(role => role.name === 'ADM')) {
+                db.getSpells().then((response) => {
+                    response.forEach((spell) => {
+                        const new_spell = new Spell();
+                        new_spell.copyFrom(spell);
+                        console.log(spell);
+                        message.channel.send(new_spell.img);
+                        message.channel.send(new_spell.toString());
+                    });
+                }).catch((error) => {
+                    message.channel.send(error.message);
+                });
+            } else {
+                message.reply("Você não tem permissão para executar este comando!");
+            }
+        }
+
+        if (message.content.startsWith('!spell')) {
+            if (message.member.roles.cache.some(role => role.name === 'ADM')) {
+                const messageList = message.content.split(' ');
+                console.log(messageList);
+                if (messageList.length != 4) {
+                    message.channel.send('Comando incorreto \nUse o comando da forma a baixo: \n```!spell nome_spell @User @Useralvo```');
+                    return;
+                }
+
+                const spellName = messageList[1];
+                let playerAtk = messageList[2];
+                let playerTarget = messageList[3];
+                console.log(`SpellName: ${spellName}`);
+                console.log(`PlayerAtk: ${playerAtk}`);
+                console.log(`PlayerTarget: ${playerTarget}`);
+
+                playerAtk = playerAtk.replace('<@', '').replace('>', '');
+                playerTarget = playerTarget.replace('<@', '').replace('>', '');
+
+                db.spell(spellName, playerAtk, playerTarget).then((reponse) => {
+                    message.channel.send(reponse);
+                    db.getStatusByDiscord(playerTarget).then((response) => {
+                        console.log(response);
+                        message.channel.send(parse.parseStatusToString(response));
+                    }).catch((error) => {
+                        message.channel.send("Não foi possivel achar este usuario, porfavor fale com um adm.");
+                    })
+                }).catch((error) => {
+                    console.log(error);
+                    message.channel.send(error.message);
+                });
             } else {
                 message.reply("Você não tem permissão para executar este comando!");
             }
