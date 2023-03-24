@@ -11,7 +11,7 @@ const token = process.env.DISCORD_TOKEN;
 const prefix = "!";
 
 const job = cron.schedule('0 0 * * *', function () {
-    db.resetHpAndMp;
+    db.resetHpAndMp();
     const chatId = '1077769275072331846';
     client.channels.cache.get(chatId).send('O hp e mp de todos os jogadores foi resetado!');
 });
